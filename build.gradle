@@ -1,0 +1,76 @@
+plugins {
+    id "architectury-plugin" version "3.4-SNAPSHOT"
+    id "dev.architectury.loom" version "1.1-SNAPSHOT" apply false
+    id 'org.jetbrains.kotlin.jvm' version '1.8.20'
+}
+
+architectury {
+    minecraft = rootProject.minecraft_version
+}
+
+subprojects {
+    apply plugin: "dev.architectury.loom"
+
+    loom {
+        silentMojangMappingsLicense()
+    }
+
+    dependencies {
+        minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+        // The following line declares the mojmap mappings, you may use other mappings as well
+        // mappings loom.officialMojangMappings()
+        // The following line declares the yarn mappings you may select this one as well.
+        mappings "net.fabricmc:yarn:1.19.2+build.4:v2"
+    }
+}
+
+allprojects {
+    apply plugin: "java"
+    apply plugin: "architectury-plugin"
+    apply plugin: "kotlin"
+
+    archivesBaseName = rootProject.archives_base_name
+    version = rootProject.mod_version
+    group = rootProject.maven_group
+
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://cursemaven.com"
+            content {
+                includeGroup "curse.maven"
+            }
+
+        }
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+        options.release = 17
+    }
+
+    kotlin {
+        jvmToolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))
+        }
+    }
+
+    dependencies {
+        implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.20'
+        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20"
+        implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4'
+        implementation group: 'org.jetbrains.kotlin', name: 'kotlin-reflect', version: '1.8.20'
+
+        implementation "curse.maven:cobblemon-687131:4468321"
+
+    }
+
+    java {
+        withSourcesJar()
+    }
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "17"
+    kotlinOptions.freeCompilerArgs = ["-Xjvm-default=all"]
+}

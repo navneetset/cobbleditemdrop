@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "cobbleditemdrop",
+  "version": "${version}",
+  "name": "cobbleditemdrop",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "value": "tech.sethi.pebbles.cobbleditemdrop.fabric.CobbledItemDropFabric"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.18",
+    "minecraft": ">=1.19.2"
+  }
+}
