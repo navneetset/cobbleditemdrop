@@ -4,6 +4,7 @@
   "package": "tech.sethi.pebbles.cobbleditemdrop.mixin.forge",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "PokemonSpawnActionMixin"
   ],
   "client": [
   ],
