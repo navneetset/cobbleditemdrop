@@ -64,6 +64,7 @@ shadowJar {
     exclude "com/**/*"
     exclude "com.*"
 
+    relocate "net.kyori", "tech.sethi.pebbles"
     configurations = [project.configurations.shadowCommon]
     classifier "dev-shadow"
 }
