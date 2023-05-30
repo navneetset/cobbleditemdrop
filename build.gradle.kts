@@ -1,10 +1,10 @@
 plugins {
     id("java")
     id("java-library")
-    kotlin("jvm") version("1.8.0")
+    kotlin("jvm") version ("1.8.0")
 
-    id("dev.architectury.loom") version("1.1-SNAPSHOT") apply false
-    id("architectury-plugin") version("3.4-SNAPSHOT") apply false
+    id("dev.architectury.loom") version ("1.1-SNAPSHOT") apply false
+    id("architectury-plugin") version ("3.4-SNAPSHOT") apply false
 }
 
 allprojects {
@@ -18,6 +18,7 @@ allprojects {
         mavenCentral()
         maven(url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
         maven("https://maven.impactdev.net/repository/development/")
+        maven("https://cursemaven.com")
     }
 
     java {
