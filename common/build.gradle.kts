@@ -13,6 +13,7 @@ loom {
 }
 
 dependencies {
+    implementation("org.jetbrains:annotations:24.0.0")
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     // The following line declares the mojmap mappings, you may use other mappings as well
     mappings("net.fabricmc:yarn:1.19.2+build.4:v2")
