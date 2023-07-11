@@ -31,10 +31,10 @@ object CobbledItemDrop {
     val LOGGER = LogManager.getLogger()
 
     val rewardTiers = listOf(
-        RewardTier(1, 25, 3, 5),
-        RewardTier(26, 50, 5, 7),
-        RewardTier(51, 75, 7, 9),
-        RewardTier(76, 100, 9, 12)
+        RewardTier(1, 25, 5, 8),
+        RewardTier(26, 50, 8, 12),
+        RewardTier(51, 75, 12, 18),
+        RewardTier(76, 100, 18, 25)
     )
 
     private fun getRewardForKill(): Int {
