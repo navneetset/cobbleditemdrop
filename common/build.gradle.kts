@@ -22,6 +22,7 @@ dependencies {
     implementation("net.kyori:adventure-text-minimessage:${property("minimessage_version")}")
     implementation("net.kyori:adventure-text-serializer-gson:${property("minimessage_version")}")
     // Remove the next line if you don't want to depend on the API
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     modApi("dev.architectury:architectury:${property("architectury_version")}") { isTransitive = false }
     modImplementation("curse.maven:cobblemon-687131:4468330") { isTransitive = false }
 }
