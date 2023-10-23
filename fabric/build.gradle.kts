@@ -24,7 +24,7 @@ configurations.all {
 val shadowCommon = configurations.create("shadowCommon")
 dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-    mappings("net.fabricmc:yarn:1.19.2+build.4:v2")
+    mappings("net.fabricmc:yarn:${property("yarn_mappings_version")}:v2")
     modImplementation("net.fabricmc:fabric-loader:${property("fabric_loader_version")}")
 
     modRuntimeOnly("net.fabricmc.fabric-api:fabric-api:${property("fabric_api_version")}")
@@ -37,7 +37,7 @@ dependencies {
     shadowCommon("net.kyori:adventure-text-minimessage:${property("minimessage_version")}")
     shadowCommon("net.kyori:adventure-text-serializer-gson:${property("minimessage_version")}")
 
-    modImplementation("curse.maven:cobblemon-687131:4468330") { isTransitive = false }
+    modImplementation("curse.maven:cobblemon-687131:4797468") { isTransitive = false }
     shadowCommon(project(":common", configuration = "transformProductionFabric"))
 }
 

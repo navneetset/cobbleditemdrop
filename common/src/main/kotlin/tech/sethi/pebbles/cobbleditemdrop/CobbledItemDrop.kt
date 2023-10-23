@@ -10,7 +10,6 @@ import dev.architectury.event.EventResult
 import dev.architectury.event.events.common.CommandRegistrationEvent
 import dev.architectury.event.events.common.EntityEvent
 import dev.architectury.event.events.common.LifecycleEvent
-import jdk.jfr.Timespan.SECONDS
 import net.minecraft.entity.Entity
 import net.minecraft.entity.damage.DamageSource
 import net.minecraft.entity.player.PlayerEntity
@@ -66,16 +65,17 @@ object CobbledItemDrop {
                     player.sendMessage(
                         Text.literal(
                             "You shamelessly slaughtered a wild " + entity.name.string + "."
-                        ).formatted(Formatting.GREEN), false
+                        ).formatted(Formatting.GRAY), false
                     )
 
                     val pebbles = getRewardForKill()
-                    val pebbleItem = Items.STONE_BUTTON
+                    val pebbleItem = Items.FEATHER
                     val pebbleItemStack = ItemStack(pebbleItem, 1)
                     val nbt = pebbleItemStack.orCreateNbt
                     pebbleItemStack.setCustomName(Text.literal("$pebbles Pebble").formatted(Formatting.GOLD))
 
                     nbt.putInt("Pebbles", pebbles)
+                    nbt.putInt("CustomModelData", 8)
 
                     player.inventory.offerOrDrop(pebbleItemStack)
 
@@ -90,46 +90,70 @@ object CobbledItemDrop {
             })
 
             CobblemonEvents.BATTLE_VICTORY.subscribe { event ->
-                val actors = event.battle.actors
-                var defeatedActor: BattleActor? = null
-                var playerActor: BattleActor? = null
-                if (actors.all { !it.battle.isPvP }) {
-                    for (actor in actors) {
-                        val player = server.playerManager.getPlayer(actor.uuid)
-                        if (player != null && actor.pokemonList.any { it.health > 0 }) {
-                            // This actor is a player and won the battle
-                            playerActor = actor
-                        } else if (player == null) {
-                            // This actor might be a wild Pokémon
-                            defeatedActor = actor
-                        }
-                    }
-                }
-                if (defeatedActor != null && playerActor != null && defeatedActor.pokemonList.all { it.health <= 0 }) {
-                    // This is a wild Pokémon that was defeated by the player
-                    val defeatedPokemon = defeatedActor.pokemonList.first().originalPokemon
-                    val player = server.playerManager.getPlayer(playerActor.uuid)
-                    val reward = getRewardForBattleVictory(defeatedPokemon.level)
+                if (event.battle.isPvW && !event.losers.first().pokemonList.first().originalPokemon.isPlayerOwned()) {
+                    val level = event.losers.first().pokemonList.first().originalPokemon.level
+                    val reward = getRewardForBattleVictory(level)
 
-                    val pebbleItem = Items.STONE_BUTTON
+                    val pebbleItem = Items.FEATHER
                     val pebbleItemStack = ItemStack(pebbleItem, 1)
                     val nbt = pebbleItemStack.orCreateNbt
-                    pebbleItemStack.setCustomName(Text.literal("$reward Pebbles").formatted(Formatting.GOLD))
+                    pebbleItemStack.setCustomName(Text.literal("$reward Pebble").formatted(Formatting.GOLD))
 
                     nbt.putInt("Pebbles", reward)
+                    nbt.putInt("CustomModelData", 8)
 
-                    player?.inventory?.offerOrDrop(pebbleItemStack)
+                    event.winners.first().getPlayerUUIDs().forEach { uuid ->
+                        val player = server.playerManager.getPlayer(uuid)
+                        player?.inventory?.offerOrDrop(pebbleItemStack)
 
-                    player?.sendMessage(
-                        Text.literal("You defeated wild ${defeatedPokemon.species.name}.")
-                            .formatted(Formatting.GREEN), false
-                    )
-
-                    player?.sendMessage(
-                        Text.literal("You looted $reward pebbles from its corpse.")
-                            .formatted(Formatting.GOLD), false
-                    )
+                        player?.sendMessage(
+                            Text.literal("You looted $reward pebbles from its corpse.")
+                                .formatted(Formatting.GOLD), false
+                        )
+                    }
                 }
+
+//                val actors = event.battle.actors
+//                var defeatedActor: BattleActor? = null
+//                var playerActor: BattleActor? = null
+//                if (actors.all { !it.battle.isPvP }) {
+//                    for (actor in actors) {
+//                        val player = server.playerManager.getPlayer(actor.uuid)
+//                        if (player != null && actor.pokemonList.any { it.health > 0 }) {
+//                            // This actor is a player and won the battle
+//                            playerActor = actor
+//                        } else if (player == null) {
+//                            // This actor might be a wild Pokémon
+//                            defeatedActor = actor
+//                        }
+//                    }
+//                }
+//                if (defeatedActor != null && playerActor != null && defeatedActor.pokemonList.all { it.health <= 0 }) {
+//                    // This is a wild Pokémon that was defeated by the player
+//                    val defeatedPokemon = defeatedActor.pokemonList.first().originalPokemon
+//                    val player = server.playerManager.getPlayer(playerActor.uuid)
+//                    val reward = getRewardForBattleVictory(defeatedPokemon.level)
+//
+//                    val pebbleItem = Items.FEATHER
+//                    val pebbleItemStack = ItemStack(pebbleItem, 1)
+//                    val nbt = pebbleItemStack.orCreateNbt
+//                    pebbleItemStack.setCustomName(Text.literal("$reward Pebbles").formatted(Formatting.GOLD))
+//
+//                    nbt.putInt("Pebbles", reward)
+//                    nbt.putInt("CustomModelData", 8)
+//
+//                    player?.inventory?.offerOrDrop(pebbleItemStack)
+//
+//                    player?.sendMessage(
+//                        Text.literal("You defeated wild ${defeatedPokemon.species.name}.")
+//                            .formatted(Formatting.GRAY), false
+//                    )
+//
+//                    player?.sendMessage(
+//                        Text.literal("You looted $reward pebbles from its corpse.")
+//                            .formatted(Formatting.GOLD), false
+//                    )
+//                }
                 EventResult.pass()
             }
         }
@@ -194,7 +218,7 @@ object CobbledItemDrop {
         )
 
         ctx.source.sendFeedback(
-            Text.literal("Pebble drop multiplier set to $multiplier for $duration minutes."),
+            { Text.literal("Pebble drop multiplier set to $multiplier for $duration minutes.") },
             false
         )
 
@@ -206,7 +230,7 @@ object CobbledItemDrop {
         boostTask?.cancel(false)
         boostTask = null
         LOGGER.info("Pebble drop multiplier manually reset to 1.")
-        ctx.source.sendFeedback(Text.literal("Pebble drop multiplier manually reset to 1."), false)
+        ctx.source.sendFeedback({ Text.literal("Pebble drop multiplier manually reset to 1.") }, false)
         return 1
     }
 
@@ -214,11 +238,11 @@ object CobbledItemDrop {
         val remainingTime = boostTask?.getDelay(TimeUnit.SECONDS)?.let { TimeUnit.SECONDS.toMinutes(it + 30) }
         if (remainingTime != null && remainingTime > 0) {
             ctx.source.sendFeedback(
-                Text.literal("Active boost: x$dropMultiplier. Remaining time: $remainingTime minutes."),
+                { Text.literal("Active boost: x$dropMultiplier. Remaining time: $remainingTime minutes.") },
                 false
             )
         } else {
-            ctx.source.sendFeedback(Text.literal("No active boost."), false)
+            ctx.source.sendFeedback({ Text.literal("No active boost.") }, false)
         }
         return 1
     }
