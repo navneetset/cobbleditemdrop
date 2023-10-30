@@ -34,12 +34,12 @@ configurations {
 dependencies {
 
     minecraft("com.mojang:minecraft:${rootProject.minecraft_version}")
-    mappings("net.fabricmc:yarn:1.19.2+build.4:v2")
+    mappings("net.fabricmc:yarn:1.20.1+build.10:v2")
     forge "net.minecraftforge:forge:${rootProject.forge_version}"
     // Remove the next line if you don't want to depend on the API
     modApi "dev.architectury:architectury-forge:${rootProject.architectury_version}"
 
-    modImplementation("curse.maven:cobblemon-687131:4468321")
+    modImplementation("curse.maven:cobblemon-687131:4797468")
 
     forgeRuntimeLibrary("net.kyori:adventure-text-minimessage:${property("minimessage_version")}")
     forgeRuntimeLibrary("net.kyori:adventure-text-serializer-gson:${property("minimessage_version")}")

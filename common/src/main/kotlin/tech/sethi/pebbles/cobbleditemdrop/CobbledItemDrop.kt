@@ -8,21 +8,13 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.context.CommandContext
 import dev.architectury.event.EventResult
 import dev.architectury.event.events.common.CommandRegistrationEvent
-import dev.architectury.event.events.common.EntityEvent
 import dev.architectury.event.events.common.LifecycleEvent
-import jdk.jfr.Timespan.SECONDS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import net.minecraft.entity.Entity
-import net.minecraft.entity.damage.DamageSource
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.item.ItemStack
-import net.minecraft.item.Items
 import net.minecraft.server.command.CommandManager
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
-import net.minecraft.util.Formatting
 import org.apache.logging.log4j.LogManager
 import tech.sethi.pebbles.cobbledeventstuff.PM
 import java.util.concurrent.Executors
@@ -98,106 +90,78 @@ object CobbledItemDrop {
             CobblemonEvents.BATTLE_VICTORY.subscribe { event ->
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    val actors = event.battle.actors
-                    var defeatedActor: BattleActor? = null
-                    var playerActor: BattleActor? = null
-                    if (actors.all { !it.battle.isPvP }) {
-                        for (actor in actors) {
-                            val player = server.playerManager.getPlayer(actor.uuid)
-                            if (player != null && actor.pokemonList.any { it.health > 0 }) {
-                                // This actor is a player and won the battle
-                                playerActor = actor
-                            } else if (player == null) {
-                                // This actor might be a wild Pokémon
-                                defeatedActor = actor
-                            }
-                        }
+                    if (!event.battle.isPvW) {
+                        return@launch
                     }
-                    if (defeatedActor != null && playerActor != null && defeatedActor.pokemonList.all { it.health <= 0 }) {
-                        val defeatedPokemon = defeatedActor.pokemonList.first().originalPokemon
-                        val player = server.playerManager.getPlayer(playerActor.uuid)
-                        val reward = getRewardForBattleVictory(defeatedPokemon.level)
 
-                        val rewardMessage = ConfigLoader.config.victoryMessage
-                            .replace("{pokemon}", defeatedPokemon.species.name)
+                    if (event.losers.first().pokemonList.first().originalPokemon.isPlayerOwned()) {
+                        return@launch
+                    }
+
+                    val defeatedPokemon = event.losers.first().pokemonList.first().originalPokemon
+                    val player =
+                        event.winners.first().getPlayerUUIDs().firstOrNull()?.let { server.playerManager.getPlayer(it) }
+                    val reward = getRewardForBattleVictory(defeatedPokemon.level)
+
+                    val rewardMessage =
+                        ConfigLoader.config.victoryMessage.replace("{pokemon}", defeatedPokemon.species.name)
                             .replace("{amount}", reward.toString())
 
-                        player?.sendMessage(
-                            PM.returnStyledText(rewardMessage)
-                        )
+                    player?.sendMessage(
+                        PM.returnStyledText(rewardMessage)
+                    )
 
-                        ConfigLoader.config.rewardTiers.find { defeatedPokemon.level in it.minLevel..it.maxLevel }
-                            ?.let { rewardTier ->
-                                rewardTier.rewardCommands.forEach {
-                                    server.commandManager.executeWithPrefix(
-                                        server.commandSource,
-                                        it
-                                            .replace("{player_name}", player?.name?.string ?: "null")
-                                            .replace("{amount}", reward.toString())
-                                    )
-                                }
+                    ConfigLoader.config.rewardTiers.find { defeatedPokemon.level in it.minLevel..it.maxLevel }
+                        ?.let { rewardTier ->
+                            rewardTier.rewardCommands.forEach {
+                                server.commandManager.executeWithPrefix(
+                                    server.commandSource,
+                                    it.replace("{player_name}", player?.name?.string ?: "null")
+                                        .replace("{amount}", reward.toString())
+                                )
                             }
-                    }
+                        }
                 }
-                EventResult.pass()
             }
+            EventResult.pass()
         }
     }
+
 
     var dropMultiplier = 1.0
     private var boostTask: ScheduledFuture<*>? = null
     private val executor = Executors.newSingleThreadScheduledExecutor()
 
     fun registerCommands(dispatcher: CommandDispatcher<ServerCommandSource>) {
-        dispatcher.register(
-            CommandManager.literal("pebblesdrop")
-                .requires { it.hasPermissionLevel(2) }
-                .then(
-                    CommandManager.literal("boost")
-                        .then(
-                            CommandManager.argument("multiplier", DoubleArgumentType.doubleArg(0.0))
-                                .then(
-                                    CommandManager.argument("duration", IntegerArgumentType.integer(1))
-                                        .executes { ctx: CommandContext<ServerCommandSource> ->
-                                            setDropMultiplier(
-                                                ctx,
-                                                DoubleArgumentType.getDouble(ctx, "multiplier"),
-                                                IntegerArgumentType.getInteger(ctx, "duration")
-                                            )
-                                        }
-                                )
-                        )
-                )
-                .then(
-                    CommandManager.literal("reset")
+        dispatcher.register(CommandManager.literal("pebblesdrop").requires { it.hasPermissionLevel(2) }.then(
+            CommandManager.literal("boost").then(
+                CommandManager.argument("multiplier", DoubleArgumentType.doubleArg(0.0))
+                    .then(CommandManager.argument("duration", IntegerArgumentType.integer(1))
                         .executes { ctx: CommandContext<ServerCommandSource> ->
-                            resetMultiplier(ctx)
-                        }
-                )
-                .then(
-                    CommandManager.literal("check")
-                        .executes { ctx: CommandContext<ServerCommandSource> ->
-                            checkBoost(ctx)
-                        }
-                ).then(
-                    CommandManager.literal("reload")
-                        .executes { ctx: CommandContext<ServerCommandSource> ->
-                            ConfigLoader.reloadConfig()
-
-                            ctx.source.sendFeedback(
-                                Text.literal("Pebble's config reloaded."),
-                                false
+                            setDropMultiplier(
+                                ctx,
+                                DoubleArgumentType.getDouble(ctx, "multiplier"),
+                                IntegerArgumentType.getInteger(ctx, "duration")
                             )
-                            1
-                        }
-                )
+                        })
+            )
+        ).then(CommandManager.literal("reset").executes { ctx: CommandContext<ServerCommandSource> ->
+            resetMultiplier(ctx)
+        }).then(CommandManager.literal("check").executes { ctx: CommandContext<ServerCommandSource> ->
+            checkBoost(ctx)
+        }).then(CommandManager.literal("reload").executes { ctx: CommandContext<ServerCommandSource> ->
+            ConfigLoader.reloadConfig()
+
+            ctx.source.sendFeedback(
+                { Text.literal("Pebble's config reloaded.") }, false
+            )
+            1
+        })
         )
     }
 
     private fun setDropMultiplier(
-        ctx: CommandContext<ServerCommandSource>,
-        multiplier: Double,
-        duration: Int
+        ctx: CommandContext<ServerCommandSource>, multiplier: Double, duration: Int
     ): Int {
         dropMultiplier = multiplier
         boostTask?.cancel(false)  // Cancel the previous task if it exists
@@ -208,14 +172,11 @@ object CobbledItemDrop {
             {
                 dropMultiplier = 1.0
                 LOGGER.info("Pebble drop multiplier reset to 1.")
-            },
-            duration.toLong(),
-            TimeUnit.MINUTES
+            }, duration.toLong(), TimeUnit.MINUTES
         )
 
         ctx.source.sendFeedback(
-            Text.literal("Pebble drop multiplier set to $multiplier for $duration minutes."),
-            false
+            { Text.literal("Pebble drop multiplier set to $multiplier for $duration minutes.") }, false
         )
 
         return 1  // Return 1 to indicate the command executed successfully
@@ -226,7 +187,7 @@ object CobbledItemDrop {
         boostTask?.cancel(false)
         boostTask = null
         LOGGER.info("Pebble drop multiplier manually reset to 1.")
-        ctx.source.sendFeedback(Text.literal("Pebble drop multiplier manually reset to 1."), false)
+        ctx.source.sendFeedback({ Text.literal("Pebble drop multiplier manually reset to 1.") }, false)
         return 1
     }
 
@@ -234,11 +195,10 @@ object CobbledItemDrop {
         val remainingTime = boostTask?.getDelay(TimeUnit.SECONDS)?.let { TimeUnit.SECONDS.toMinutes(it + 30) }
         if (remainingTime != null && remainingTime > 0) {
             ctx.source.sendFeedback(
-                Text.literal("Active boost: x$dropMultiplier. Remaining time: $remainingTime minutes."),
-                false
+                { Text.literal("Active boost: x$dropMultiplier. Remaining time: $remainingTime minutes.") }, false
             )
         } else {
-            ctx.source.sendFeedback(Text.literal("No active boost."), false)
+            ctx.source.sendFeedback({ Text.literal("No active boost.") }, false)
         }
         return 1
     }
