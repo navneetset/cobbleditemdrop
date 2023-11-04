@@ -2,6 +2,7 @@ package tech.sethi.pebbles.cobbleditemdrop
 
 import com.cobblemon.mod.common.api.battles.model.actor.BattleActor
 import com.cobblemon.mod.common.api.events.CobblemonEvents
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.DoubleArgumentType
 import com.mojang.brigadier.arguments.IntegerArgumentType
@@ -60,21 +61,15 @@ object CobbledItemDrop {
 
         LifecycleEvent.SERVER_STARTED.register { server ->
             EntityEvent.LIVING_DEATH.register(EntityEvent.LivingDeath { entity: Entity, source: DamageSource ->
-                if (source.attacker is PlayerEntity && "cobblemon.pokemon" in entity.type.toString().lowercase()) {
+                if (source.attacker is PlayerEntity && entity is PokemonEntity && entity.pokemon.isWild()) {
                     val player = source.attacker as PlayerEntity
-                    player.sendMessage(
-                        Text.literal(
-                            "You shamelessly slaughtered a wild " + entity.name.string + "."
-                        ).formatted(Formatting.GRAY), false
-                    )
-
                     val pebbles = getRewardForKill()
                     val pebbleItem = Items.FEATHER
-                    val pebbleItemStack = ItemStack(pebbleItem, 1)
+                    val pebbleItemStack = ItemStack(pebbleItem, pebbles)
                     val nbt = pebbleItemStack.orCreateNbt
-                    pebbleItemStack.setCustomName(Text.literal("$pebbles Pebble").formatted(Formatting.GOLD))
+                    pebbleItemStack.setCustomName(Text.literal("1 Pebble").formatted(Formatting.GOLD))
 
-                    nbt.putInt("Pebbles", pebbles)
+                    nbt.putInt("Pebbles", 1)
                     nbt.putInt("CustomModelData", 8)
 
                     player.inventory.offerOrDrop(pebbleItemStack)
@@ -95,11 +90,11 @@ object CobbledItemDrop {
                     val reward = getRewardForBattleVictory(level)
 
                     val pebbleItem = Items.FEATHER
-                    val pebbleItemStack = ItemStack(pebbleItem, 1)
+                    val pebbleItemStack = ItemStack(pebbleItem, reward)
                     val nbt = pebbleItemStack.orCreateNbt
-                    pebbleItemStack.setCustomName(Text.literal("$reward Pebble").formatted(Formatting.GOLD))
+                    pebbleItemStack.setCustomName(Text.literal("1 Pebble").formatted(Formatting.GOLD))
 
-                    nbt.putInt("Pebbles", reward)
+                    nbt.putInt("Pebbles", 1)
                     nbt.putInt("CustomModelData", 8)
 
                     event.winners.first().getPlayerUUIDs().forEach { uuid ->
@@ -113,47 +108,6 @@ object CobbledItemDrop {
                     }
                 }
 
-//                val actors = event.battle.actors
-//                var defeatedActor: BattleActor? = null
-//                var playerActor: BattleActor? = null
-//                if (actors.all { !it.battle.isPvP }) {
-//                    for (actor in actors) {
-//                        val player = server.playerManager.getPlayer(actor.uuid)
-//                        if (player != null && actor.pokemonList.any { it.health > 0 }) {
-//                            // This actor is a player and won the battle
-//                            playerActor = actor
-//                        } else if (player == null) {
-//                            // This actor might be a wild Pokémon
-//                            defeatedActor = actor
-//                        }
-//                    }
-//                }
-//                if (defeatedActor != null && playerActor != null && defeatedActor.pokemonList.all { it.health <= 0 }) {
-//                    // This is a wild Pokémon that was defeated by the player
-//                    val defeatedPokemon = defeatedActor.pokemonList.first().originalPokemon
-//                    val player = server.playerManager.getPlayer(playerActor.uuid)
-//                    val reward = getRewardForBattleVictory(defeatedPokemon.level)
-//
-//                    val pebbleItem = Items.FEATHER
-//                    val pebbleItemStack = ItemStack(pebbleItem, 1)
-//                    val nbt = pebbleItemStack.orCreateNbt
-//                    pebbleItemStack.setCustomName(Text.literal("$reward Pebbles").formatted(Formatting.GOLD))
-//
-//                    nbt.putInt("Pebbles", reward)
-//                    nbt.putInt("CustomModelData", 8)
-//
-//                    player?.inventory?.offerOrDrop(pebbleItemStack)
-//
-//                    player?.sendMessage(
-//                        Text.literal("You defeated wild ${defeatedPokemon.species.name}.")
-//                            .formatted(Formatting.GRAY), false
-//                    )
-//
-//                    player?.sendMessage(
-//                        Text.literal("You looted $reward pebbles from its corpse.")
-//                            .formatted(Formatting.GOLD), false
-//                    )
-//                }
                 EventResult.pass()
             }
         }
