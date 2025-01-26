@@ -39,7 +39,7 @@ dependencies {
     // Remove the next line if you don't want to depend on the API
     modApi "dev.architectury:architectury-forge:${rootProject.architectury_version}"
 
-    modImplementation("curse.maven:cobblemon-687131:4797468")
+    modImplementation("com.cobblemon:forge:1.5.0+1.20.1")
 
     forgeRuntimeLibrary("net.kyori:adventure-text-minimessage:${property("minimessage_version")}")
     forgeRuntimeLibrary("net.kyori:adventure-text-serializer-gson:${property("minimessage_version")}")
